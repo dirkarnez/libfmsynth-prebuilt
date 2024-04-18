@@ -1,0 +1,71 @@
+name: cpp-cmake-mingw-prebuilt-release-actions-workflow
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+      - '*' # Push events to matching v*, i.e. v1.0, v20.15.10
+
+permissions:
+    contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        compiler:
+        - {
+            name: "winlibs-x86_64-posix-seh-gcc-11.2.0-mingw-w64-9.0.0-r1",
+            url: "https://github.com/brechtsanders/winlibs_mingw/releases/download/11.2.0-12.0.1-9.0.0-r1/winlibs-x86_64-posix-seh-gcc-11.2.0-mingw-w64-9.0.0-r1.zip"
+          }
+        # - {
+        #     name: "msvc2019"
+        #   }
+
+    runs-on: windows-latest
+    env:
+      libraryName: libfmsynth
+      tagName: b989b5c0efd46b312ce4edd89808d34dc5135bb4
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          repository: Themaister/libfmsynth
+          path: libfmsynth
+          ref: ${{ env.tagName }}
+          submodules: true
+          
+      - name: Install MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          install: make autoconf automake libtool autogen perl
+          
+      - name: set PATH, check mingw version, cmake generate, build and install
+        shell: msys2 {0}
+        run: |
+            workspace=$(pwd) &&
+            export PATH="$workspace/mingw64:$workspace/mingw64/bin:$workspace/msys64/usr/bin:/usr/bin" &&
+            cd ${{ env.libraryName }} && 
+            g++ --version && 
+            mingw32-make.exe -f GNUmakefile
+            
+      # - name: copy customized openssl-config.cmake
+      #   shell: cmd
+      #   run: xcopy /H /Y /C "openssl-config.cmake" "openssl\${{ env.installationPath }}"
+        
+      # - name: copy customized openssl-config.cmake
+      #   shell: cmd
+      #   run: xcopy /H /Y /C "openssl-config-version.cmake" "openssl\${{ env.installationPath }}"
+        
+      - name: Archive Release
+        uses: thedoctor0/zip-release@master
+        with:
+          type: 'zip'
+          directory: "${{ env.libraryName }}"
+          filename: "${{ env.mingwTargetZip }}"
+        
+      - name: Release prebuilt
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "${{ env.libraryName }}/${{ env.mingwTargetZip }}"
+          allowUpdates: true
+          token: ${{ secrets.GITHUB_TOKEN }}
