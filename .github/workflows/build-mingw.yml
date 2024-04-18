@@ -33,6 +33,13 @@ jobs:
           ref: ${{ env.tagName }}
           submodules: true
           
+      - name: download compiler
+        if: ${{  matrix.compiler.url }}
+        shell: cmd
+        run: |
+          curl ${{ matrix.compiler.url }} -L --output compiler &&^
+          7z.exe x compiler
+          
       - name: Install MSYS2
         uses: msys2/setup-msys2@v2
         with:
